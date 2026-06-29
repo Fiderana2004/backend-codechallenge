@@ -1,6 +1,7 @@
 require("dotenv").config()
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -18,6 +19,9 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "../admin.html"));
+});
 
 app.use(
   "/uploads",
