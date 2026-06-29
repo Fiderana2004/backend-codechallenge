@@ -23,6 +23,8 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "../admin.html"));
 });
 
+app.use("/assets", express.static(path.join(__dirname, "assets")));
+
 app.use(
   "/uploads",
   express.static("uploads")
