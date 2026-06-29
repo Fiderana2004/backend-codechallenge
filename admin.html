@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Challenge - Administration</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <style>
+        /* ── RESET & CONFIGURATION ───────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #090d16;
+            --bg-card: #131926;
+            --bg-input: #1a2333;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(142, 36, 170, 0.4);
+            
+            --ink: #f8fafc;
+            --ink-muted: #94a3b8;
+            --ink-dim: #64748b;
+            
+            /* Palette de marque sélective */
+            --p-violet: #7c3aed;
+            --p-violet-glow: rgba(124, 58, 237, 0.15);
+            
+            /* Status d'alertes raffinés */
+            --green: #10b981;
+            --green-bg: rgba(16, 185, 129, 0.1);
+            --red: #f43f5e;
+            --red-bg: rgba(244, 63, 94, 0.1);
+            --amber: #f59e0b;
+            --amber-bg: rgba(245, 158, 11, 0.1);
+            --blue: #3b82f6;
+            --blue-bg: rgba(59, 130, 246, 0.1);
+            
+            --mono: 'IBM Plex Mono', monospace;
+            --sans: 'IBM Plex Sans', sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--sans);
+            min-height: 100vh;
+            font-size: 14px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── INTERFACES GLOBALES ─────────────────────────────────── */
+        input, select, textarea, button {
+            font-family: inherit;
+            color: inherit;
+        }
+
+        /* ── AUTHENTIFICATION (LOGIN) ────────────────────────────── */
+        #loginScreen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1e113a 0%, #090d16 100%);
+            padding: 20px;
+        }
+
+        .login-box {
+            width: 100%;
+            max-width: 420px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        .login-header {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .login-header-dots { display: flex; gap: 6px; }
+        .login-header-dots span {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--ink-dim);
+        }
+        .login-header-dots span:nth-child(1) { background: var(--red); }
+        .login-header-dots span:nth-child(2) { background: var(--amber); }
+        .login-header-dots span:nth-child(3) { background: var(--green); }
+
+        .login-header-title {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--ink-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .login-body { padding: 32px 32px; }
+        .login-prompt { font-size: 24px; font-weight: 700; margin-bottom: 4px; color: var(--ink); }
+        .login-sub { color: var(--ink-dim); font-size: 11px; margin-bottom: 24px; font-family: var(--mono); }
+
+        .field-wrap { margin-bottom: 20px; }
+        .field-label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .field-input {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: var(--mono);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .field-input:focus { border-color: var(--p-violet); box-shadow: 0 0 0 3px var(--p-violet-glow); }
+
+        .btn-login {
+            width: 100%;
+            background: var(--p-violet);
+            border: none;
+            border-radius: 6px;
+            padding: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-login:hover { background: #6d28d9; transform: translateY(-1px); }
+
+        .login-error {
+            margin-top: 16px; padding: 12px; background: var(--red-bg);
+            border-radius: 6px; border-left: 3px solid var(--red);
+            color: var(--red); font-size: 13px; display: none;
+        }
+        .login-error.show { display: block; }
+
+        /* ── APPLICATION LAYOUT ──────────────────────────────────── */
+        #app { display: none; min-height: 100vh; padding-top: 60px; }
+
+        .topbar {
+            height: 60px;
+            background: rgba(19, 25, 38, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 200;
+        }
+
+      .topbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-right: 24px;
+    border-right: 1px solid var(--border);
+}
+
+.topbar-logo img {
+    width: 100px;
+    height: 100px;
+    object-fit: contain;
+}
+        .logo-title { font-size: 15px; font-weight: 700; color: var(--ink); }
+        .logo-subtitle { font-size: 11px; color: var(--ink-dim); }
+
+        .topbar-nav { display: flex; height: 100%; margin-left: 16px; gap: 4px; }
+        .topbar-tab {
+            height: 100%;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink-muted);
+            cursor: pointer;
+            border: none;
+            background: none;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .topbar-tab:hover { color: var(--ink); background: rgba(255, 255, 255, 0.02); }
+        .topbar-tab.active {
+            color: var(--ink);
+            border-bottom-color: var(--p-violet);
+            background: rgba(124, 58, 237, 0.05);
+        }
+
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+        .topbar-user { font-size: 12px; color: var(--ink-muted); font-family: var(--mono); }
+        
+        .btn-logout {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--ink-muted);
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { color: var(--ink); border-color: var(--ink-dim); background: rgba(255, 255, 255, 0.02); }
+
+        /* ── TABLEAU DE BORD & PAGES ─────────────────────────────── */
+        .content { padding: 24px; max-width: 1600px; margin: 0 auto; }
+        .page { display: none; }
+        .page.active { display: block; }
+
+        .sec-head {
+            display: flex; align-items: baseline; gap: 12px;
+            margin-bottom: 20px; padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sec-title { font-size: 20px; font-weight: 700; color: var(--ink); }
+        .sec-sub { font-size: 12px; color: var(--ink-muted); font-family: var(--mono); }
+
+        /* Grille de statistiques équilibrée */
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-cell {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            transition: border-color 0.2s;
+        }
+        .stat-cell:hover { border-color: var(--border-hover); }
+        .stat-cell-label { font-size: 11px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        .stat-cell-value { font-size: 28px; font-weight: 700; line-height: 1.2; font-family: var(--mono); }
+        
+        .stat-cell-value.g { color: var(--green); }
+        .stat-cell-value.b { color: var(--blue); }
+        .stat-cell-value.r { color: var(--red); }
+        .stat-cell-value.a { color: var(--amber); }
+
+        /* Structures de sections bi-colonne */
+        .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .two-col > div { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+
+        @media (max-width: 1024px) {
+            .two-col { grid-template-columns: 1fr; }
+        }
+
+        /* ── TABLEAUX ET COMPOSANTS TABLE ───────────────────────── */
+        .tbl-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 0; overflow-x: auto; }
+        .tbl-head { font-size: 12px; font-weight: 600; color: var(--ink-muted); padding: 12px 20px; text-transform: uppercase; }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th {
+            background: rgba(255, 255, 255, 0.01);
+            padding: 12px 20px; font-size: 11px; font-weight: 600;
+            color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+        }
+        td { padding: 12px 20px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--ink); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255, 255, 255, 0.01); }
+
+        /* Outils d'action (Toolbar) */
+        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .inp {
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 6px; padding: 9px 14px; font-size: 13px;
+            outline: none; transition: all 0.2s;
+        }
+        .inp:focus { border-color: var(--p-violet); }
+        .inp-search { width: 320px; }
+
+        /* Boutons d'actions */
+        .btn {
+            font-size: 13px; font-weight: 500; padding: 9px 16px;
+            cursor: pointer; border: none; border-radius: 6px;
+            transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center;
+        }
+        .btn-ink { background: var(--p-violet); color: #ffffff; }
+        .btn-ink:hover { background: #6d28d9; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 4px; }
+        .btn-outline { background: transparent; color: var(--ink); border: 1px solid var(--border); }
+        .btn-outline:hover { background: rgba(255, 255, 255, 0.03); border-color: var(--ink-dim); }
+        .btn-red { background: transparent; color: var(--red); border: 1px solid rgba(244, 63, 94, 0.2); }
+        .btn-red:hover { background: var(--red-bg); }
+
+        /* Badges de statuts */
+        .badge {
+            display: inline-flex; padding: 2px 8px; font-size: 11px;
+            font-weight: 600; text-transform: uppercase; border-radius: 4px; font-family: var(--mono);
+        }
+        .badge-g { color: var(--green); background: var(--green-bg); }
+        .badge-r { color: var(--red); background: var(--red-bg); }
+        .badge-a { color: var(--amber); background: var(--amber-bg); }
+        .badge-b { color: var(--blue); background: var(--blue-bg); }
+
+        /* Alertes contextuelles */
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: none; }
+        .alert.show-g { display: block; color: var(--green); background: var(--green-bg); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .alert.show-r { display: block; color: var(--red); background: var(--red-bg); border: 1px solid rgba(244, 63, 94, 0.2); }
+
+        /* Modales système */
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(4, 6, 10, 0.8); backdrop-filter: blur(4px);
+            z-index: 500; align-items: center; justify-content: center; padding: 20px;
+        }
+        .overlay.open { display: flex; }
+
+        .modal {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; width: 100%; max-width: 580px;
+            max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+        .modal-bar {
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #modalLabel { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--p-violet); }
+        .modal-close { background: none; border: none; font-size: 16px; cursor: pointer; color: var(--ink-dim); }
+        .modal-close:hover { color: var(--ink); }
+
+        .modal-body { padding: 24px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 11px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            background: var(--bg-input); border: 1px solid var(--border);
+            border-radius: 6px; padding: 10px 14px; font-size: 13px; outline: none;
+            transition: all 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--p-violet); }
+        .form-group textarea { resize: vertical; min-height: 90px; }
+
+        .modal-footer {
+            display: flex; justify-content: flex-end; gap: 12px;
+            padding-top: 16px; border-top: 1px solid var(--border); margin-top: 20px;
+        }
+
+        /* ── COMPOSANTS ACCESSOIRES ─────────────────────────────── */
+        .top-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .top-row:last-child { border-bottom: none; }
+        .top-rank { font-size: 12px; font-family: var(--mono); color: var(--ink-dim); width: 20px; text-align: right; }
+        .top-name { flex: 1; font-size: 13px; font-weight: 500; color: var(--ink); }
+        .top-pts { font-size: 13px; font-family: var(--mono); font-weight: 600; color: var(--green); }
+        
+        .rank-gold { color: #fbbf24; font-weight: 700; }
+        .rank-silver { color: #94a3b8; font-weight: 700; }
+        .rank-bronze { color: #d97706; font-weight: 700; }
+
+        .chart-label { font-size: 11px; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; }
+        .loading { padding: 24px; text-align: center; color: var(--ink-dim); font-family: var(--mono); font-size: 12px; }
+        .mono-sm { font-family: var(--mono); font-size: 12px; color: var(--ink-muted); background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; }
+    
+    .actions-cell{
+    display:flex;
+    gap:10px;
+}
+
+/* Bouton Modifier */
+.btn-edit{
+    background:transparent;
+    color:#3b82f6;
+    border:2px solid #3b82f6;
+    border-radius:8px;
+    padding:8px 16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:all .25s ease;
+}
+
+.btn-edit:hover{
+    background:#3b82f6;
+    color:#fff;
+}
+
+/* Bouton Supprimer */
+.btn-delete{
+    background:transparent;
+    color:#ef4444;
+    border:2px solid #ef4444;
+    border-radius:8px;
+    padding:8px 16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:all .25s ease;
+}
+
+.btn-delete:hover{
+    background:#ef4444;
+    color:#fff;
+}
+    </style>
+</head>
+<body>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<div id="loginScreen">
+    <div class="login-box">
+        <div class="login-header">
+            <div class="login-header-dots">
+                <span></span><span></span><span></span>
+            </div>
+            <div class="login-header-title">
+                cc_admin // auth_required
+            </div>
+        </div>
+
+        <div class="login-body">
+            <div class="login-prompt">Connexion</div>
+            <div class="login-sub">
+                ACCÈS RESTREINT — CONFIGURATION PRINCIPALE
+            </div>
+
+            <div class="field-wrap" style="position:relative;">
+                <label class="field-label">token admin</label>
+
+                <input
+                    class="field-input"
+                    type="password"
+                    id="loginToken"
+                    placeholder="••••••••••••••••"
+                    onkeydown="if(event.key==='Enter') doLogin()"
+                    style="padding-right:45px;"
+                >
+
+                <button
+                    type="button"
+                    id="togglePassword"
+                    style="
+                        position:absolute;
+                        right:12px;
+                        bottom:12px;
+                        background:none;
+                        border:none;
+                        cursor:pointer;
+                        color:#9a9a90;
+                        font-size:18px;
+                    ">
+                    <i class="fa-solid fa-eye"></i>
+                </button>
+            </div>
+
+            <button class="btn-login" onclick="doLogin()">
+                Authentifier
+            </button>
+
+            <div class="login-error" id="loginErr">
+                Token invalide ou serveur distant introuvable.
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="app">
+    <div class="topbar">
+        <div class="topbar-logo">
+            <img src="./codechallenge-backend/assets/images/logo_code_challenge.png" alt="Code Challenge">
+            <div>
+                <div class="logo-title">Code Challenge</div>
+                <div class="logo-subtitle">Admin Panel</div>
+            </div>
+        </div>
+        <nav class="topbar-nav">
+            <button class="topbar-tab active" onclick="showPage('dashboard',this)">dashboard</button>
+            <button class="topbar-tab" onclick="showPage('defis',this)">défis</button>
+            <button class="topbar-tab" onclick="showPage('users',this)">utilisateurs</button>
+            <button class="topbar-tab" onclick="showPage('soumissions',this)">soumissions</button>
+            <button class="topbar-tab" onclick="showPage('stats',this)">stats</button>
+        </nav>
+        <div class="topbar-right">
+            <span class="topbar-user" id="topbarUser"></span>
+            <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="page active" id="page-dashboard">
+            <div class="sec-head">
+                <span class="sec-title">Dashboard</span>
+                <span class="sec-sub">statistiques_globales</span>
+            </div>
+            <div id="alertDash" class="alert"></div>
+
+            <div class="stat-row">
+                <div class="stat-cell">
+                    <div class="stat-cell-label">Utilisateurs</div>
+                    <div class="stat-cell-value g" id="sUsers">—</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-cell-label">Défis Actifs</div>
+                    <div class="stat-cell-value b" id="sDefis">—</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-cell-label">Soumissions</div>
+                    <div class="stat-cell-value" id="sSoum">—</div>
+                </div>
+                <div class="stat-cell">
+                    <div class="stat-cell-label">Taux Réussite</div>
+                    <div class="stat-cell-value a" id="sTaux">—</div>
+                </div>
+            </div>
+
+            <div class="two-col">
+                <div>
+                    <div class="chart-label">Activité — 30 derniers jours</div>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="actChart" role="img" aria-label="Activité des 30 derniers jours">Chargement du graphique...</canvas>
+                    </div>
+                </div>
+                <div>
+                    <div class="chart-label">Top 5 Utilisateurs</div>
+                    <div id="topList"><div class="loading">Extraction en cours</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="page" id="page-defis">
+            <div class="sec-head">
+                <span class="sec-title">Gestion des Défis</span>
+                <span class="sec-sub" id="defiCount"></span>
+            </div>
+            <div id="alertDefis" class="alert"></div>
+            <div class="toolbar">
+                <button class="btn btn-ink" onclick="openDefiModal()">+ Nouveau défi</button>
+                <input class="inp inp-search" type="text" placeholder="Rechercher par titre ou langage..." id="searchDefi" oninput="filterDefis()">
+            </div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>id</th><th>titre</th><th>langage</th><th>difficulté</th><th>points</th><th>actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="defisTbody"><tr><td colspan="6"><div class="loading">Flux en attente</div></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page" id="page-users">
+            <div class="sec-head">
+                <span class="sec-title">Utilisateurs</span>
+                <span class="sec-sub" id="userCount"></span>
+            </div>
+            <div id="alertUsers" class="alert"></div>
+            <div class="toolbar">
+                <input class="inp inp-search" type="text" placeholder="Rechercher par nom ou email..." id="searchUser" oninput="filterUsers()">
+            </div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>rang</th><th>nom</th><th>email</th><th>points</th><th>niveau</th><th>soumissions</th><th>actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTbody"><tr><td colspan="7"><div class="loading">Flux en attente</div></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page" id="page-soumissions">
+            <div class="sec-head">
+                <span class="sec-title">Flux des Soumissions</span>
+                <span class="sec-sub">Registre temps réel (50 dernières)</span>
+            </div>
+            <div class="tbl-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th><th>utilisateur</th><th>défi</th><th>langage</th><th>résultat</th><th>points</th><th>date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="soumTbody"><tr><td colspan="7"><div class="loading">Flux en attente</div></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="page" id="page-stats">
+            <div class="sec-head">
+                <span class="sec-title">Analyses & Données</span>
+                <span class="sec-sub">Détails de performance</span>
+            </div>
+            <div class="two-col" style="grid-template-columns: 1fr 1fr;">
+                <div>
+                    <div class="chart-label">Répartition de Difficulté</div>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="diffChart" role="img">Chargement...</canvas>
+                    </div>
+                </div>
+                <div>
+                    <div class="chart-label">Taux de réussite par défi (Top 8)</div>
+                    <div style="position:relative; height:220px;">
+                        <canvas id="tauxChart" role="img">Chargement...</canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="tbl-wrap">
+                <div class="tbl-head">Classement Général Complet</div>
+                <table>
+                    <thead>
+                        <tr><th>rang</th><th>nom</th><th>points</th><th>niveau</th><th>réussis</th><th>tentatives</th><th>taux</th></tr>
+                    </thead>
+                    <tbody id="rankTbody"><tr><td colspan="7"><div class="loading">Flux en attente</div></td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="defiOverlay">
+    <div class="modal">
+        <div class="modal-bar">
+            <span id="modalLabel">// editeur_defi</span>
+            <button class="modal-close" onclick="closeDefiModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>titre du défi *</label>
+                    <input type="text" id="fTitre" placeholder="ex: Inversion de chaîne complexe">
+                </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+    <label>langage cible *</label>
+    <select id="fLangage">
+        <option value="python">Python</option>
+        <option value="javascript">JavaScript</option>
+        <option value="java">Java</option>
+        <option value="c">C</option>
+        <option value="cpp">C++</option>
+    </select>
+</div>
+                <div class="form-group">
+                    <label>complexité / difficulté *</label>
+                    <select id="fDiff">
+                        <option value="facile">Facile</option>
+                        <option value="moyen">Moyen</option>
+                        <option value="difficile">Difficile</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>attribution de points *</label>
+                    <input type="number" id="fPoints" placeholder="100" min="1">
+                </div>
+            </div>
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>énoncé / description</label>
+                    <textarea id="fDesc" placeholder="Définissez les règles claires du défi..."></textarea>
+                </div>
+            </div>
+            <div class="form-row full">
+                <div class="form-group">
+                    <label>validation / sortie attendue</label>
+                    <textarea id="fReponse" placeholder="Format exact attendu ou jeu d'essai standard..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeDefiModal()">Annuler</button>
+                <button class="btn btn-ink" onclick="saveDefi()">Enregistrer les modifications</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
+
+<script>
+const API = 'http://localhost:3000';
+let TOKEN = '';
+let defisData = [], usersData = [];
+let editingId = null;
+let actInst = null, diffInst = null, tauxInst = null;
+
+// ── AUTH ──────────────────────────────────────────────
+async function doLogin() {
+  const tok = document.getElementById('loginToken').value.trim();
+  const err = document.getElementById('loginErr');
+  err.classList.remove('show');
+  if (!tok) { err.textContent = 'Entrez votre token.'; err.classList.add('show'); return; }
+
+  try {
+    const res = await fetch(API + '/admin/stats', {
+      headers: { 'x-admin-token': tok }
+    });
+    if (!res.ok) throw new Error('unauthorized');
+    TOKEN = tok;
+    document.getElementById('topbarUser').textContent = 'token: ' + tok.substring(0, 8) + '…';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadDashboard();
+  } catch {
+    err.textContent = 'Token invalide ou serveur inaccessible.';
+    err.classList.add('show');
+  }
+}
+
+//login 
+document.getElementById('togglePassword').addEventListener('click', function () {
+    const tokenInput = document.getElementById('loginToken');
+    const icon = this.querySelector('i');
+
+    if (tokenInput.type === 'password') {
+        tokenInput.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+        tokenInput.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+});
+
+function doLogout() {
+  TOKEN = '';
+  document.getElementById('loginToken').value = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+document.getElementById('loginToken').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ── NAV ───────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.topbar-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  const loaders = { dashboard: loadDashboard, defis: loadDefis, users: loadUsers, soumissions: loadSoumissions, stats: loadStats };
+  loaders[name]?.();
+}
+
+// ── API ───────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: {
+      'Content-Type': 'application/json',
+      'x-admin-token': TOKEN
+    },
+    ...opts
+  });
+
+  const contentType = res.headers.get("content-type");
+
+  const text = await res.text();
+
+  // 🔥 si erreur HTTP
+  if (!res.ok) {
+    console.error("Erreur backend:", text);
+    throw new Error("Erreur serveur: " + res.status);
+  }
+
+  // 🔥 si ce n'est pas du JSON
+  if (!contentType || !contentType.includes("application/json")) {
+    console.error("Réponse NON JSON:", text);
+    throw new Error("Backend ne renvoie pas du JSON");
+  }
+
+  return JSON.parse(text);
+}
+
+function flash(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'alert show-' + type;
+  setTimeout(() => el.className = 'alert', 3500);
+}
+
+// ── HELPERS ───────────────────────────────────────────
+function diffBadge(d) {
+  const m = { facile: 'badge-g', moyen: 'badge-a', difficile: 'badge-r' };
+  return `<span class="badge ${m[d]||'badge-b'}">${d||'—'}</span>`;
+}
+function resBadge(r) {
+  return `<span class="badge ${r==='correct'?'badge-g':'badge-r'}">${r}</span>`;
+}
+function niveauBadge(n) {
+  const m = { debutant: 'badge-b', intermediaire: 'badge-a', expert: 'badge-g' };
+  return `<span class="badge ${m[n]||'badge-b'}">${n||'—'}</span>`;
+}
+function fmtDate(d) {
+  return new Date(d).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+// ── DASHBOARD ─────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const [stats, top, act] = await Promise.all([
+      api('/admin/stats'),
+      api('/admin/stats/top-users?limit=5'),
+      api('/admin/stats/activity'),
+    ]);
+    document.getElementById('sUsers').textContent = stats.total_users;
+    document.getElementById('sDefis').textContent = stats.total_defis;
+    document.getElementById('sSoum').textContent  = stats.total_soumissions;
+    document.getElementById('sTaux').textContent  = stats.taux_succes + '%';
+    renderTop(top);
+    renderActChart(act);
+  } catch (e) {
+    flash('alertDash', 'Erreur : ' + e.message, 'r');
+  }
+}
+
+function renderTop(users) {
+  const el = document.getElementById('topList');
+  if (!users.length) { el.innerHTML = '<div class="loading">aucun utilisateur</div>'; return; }
+  const medals = ['rank-gold','rank-silver','rank-bronze'];
+  el.innerHTML = users.map((u, i) => `
+    <div class="top-row">
+      <span class="top-rank ${medals[i]||''}">${i+1}</span>
+      <span class="top-name">${u.nom}</span>
+      <span class="top-meta">${u.nb_corrects}/${u.nb_soumissions}</span>
+      <span class="top-pts">${u.points}pt</span>
+    </div>`).join('');
+}
+
+function renderActChart(data) {
+  // 1. Log de contrôle : Ouvrez la console (F12) pour inspecter la structure reçue
+  console.log("Données reçues pour le graphique d'activité :", data);
+
+  if (actInst) actInst.destroy();
+  
+  // Sécurité si l'API renvoie une donnée invalide ou vide
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    console.warn("Aucune donnée d'activité disponible pour générer le graphique.");
+    return;
+  }
+
+  // 2. Adaptation dynamique des clés au cas où les propriétés diffèrent
+  const labels = data.map(d => {
+    const dateStr = d.jour || d.date || '';
+    return dateStr.length >= 10 ? dateStr.substring(5) : dateStr; 
+  });
+
+  const soumissions = data.map(d => parseInt(d.nb_soumissions || d.total || 0, 10));
+  const succes = data.map(d => parseInt(d.nb_succes || d.corrects || 0, 10));
+
+  actInst = new Chart(document.getElementById('actChart'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { 
+          label: 'Soumissions',
+          data: soumissions, 
+          borderColor: '#1d4e89', 
+          backgroundColor: 'rgba(29,78,137,0.06)', 
+          fill: true, 
+          tension: 0.3, 
+          pointRadius: 2, // Légèrement augmenté pour voir si les points s'affichent
+          borderWidth: 1.5 
+        },
+        { 
+          label: 'Réussies',
+          data: succes, 
+          borderColor: '#2d6a4f', 
+          backgroundColor: 'rgba(45,106,79,0.06)',  
+          fill: true, 
+          tension: 0.3, 
+          pointRadius: 2, 
+          borderWidth: 1.5 
+        },
+      ]
+    },
+    options: {
+      responsive: true, 
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { 
+          grid: { color: '#e0ddd5' }, 
+          ticks: { color: '#9a9a90', font: { family: 'IBM Plex Mono', size: 10 }, maxRotation: 0 } 
+        },
+        y: { 
+          grid: { color: '#e0ddd5' }, 
+          ticks: { color: '#9a9a90', font: { family: 'IBM Plex Mono', size: 10 } }, 
+          beginAtZero: true 
+        }
+      }
+    }
+  });
+}
+
+// ── DÉFIS ─────────────────────────────────────────────
+async function loadDefis() {
+  try {
+    const data = await api('/api/defis');
+
+    defisData = data || [];
+
+    document.getElementById('defiCount').textContent =
+      defisData.length + ' défis';
+
+    renderDefis(defisData);
+
+  } catch (e) {
+    flash('alertDefis', 'Erreur : ' + e.message, 'r');
+  }
+}
+
+
+ window.addEventListener("load", () => {
+    loadDefis();
+  });
+
+function renderDefis(data) {
+  const tb = document.getElementById('defisTbody');
+
+  tb.innerHTML = ''; // 🔥 enlève "chargement"
+
+  if (!data || data.length === 0) {
+    tb.innerHTML = `
+      <tr>
+        <td colspan="6">
+          <div class="loading">aucun défi</div>
+        </td>
+      </tr>`;
+    return;
+  }
+
+  tb.innerHTML = data.map(d => `
+    <tr>
+      <td>#${d.id_defi}</td>
+      <td>${d.titre}</td>
+      <td>${d.langage || '—'}</td>
+      <td>${d.difficulte}</td>
+      <td>${d.points}</td>
+      <td class="actions-cell">
+  <button class="btn-edit" onclick="editDefi(${d.id_defi})">
+    <i class="fa-solid fa-pen"></i> Modifier
+  </button>
+
+  <button class="btn-delete" onclick="delDefi(${d.id_defi})">
+    <i class="fa-solid fa-trash"></i> Supprimer
+  </button>
+</td>
+    </tr>
+  `).join('');
+}
+
+function filterDefis() {
+  const q = document.getElementById('searchDefi').value.toLowerCase();
+  renderDefis(defisData.filter(d => d.titre.toLowerCase().includes(q) || (d.langage||'').toLowerCase().includes(q)));
+}
+
+function openDefiModal(d = null) {
+  editingId = d?.id_defi || null;
+  document.getElementById('modalLabel').textContent = d ? '// modifier_défi' : '// nouveau_défi';
+  document.getElementById('fTitre').value   = d?.titre || '';
+  document.getElementById('fLangage').value = d?.langage || 'python';
+  document.getElementById('fDiff').value    = d?.difficulte || 'facile';
+  document.getElementById('fPoints').value  = d?.points || '';
+  document.getElementById('fDesc').value    = d?.description || '';
+  document.getElementById('fReponse').value = d?.reponse_attendue || '';
+  document.getElementById('defiOverlay').classList.add('open');
+}
+
+function closeDefiModal() { document.getElementById('defiOverlay').classList.remove('open'); }
+
+function editDefi(id) { openDefiModal(defisData.find(d => d.id_defi === id)); }
+
+async function saveDefi() {
+  const body = {
+    titre: document.getElementById('fTitre').value.trim(),
+    langage: document.getElementById('fLangage').value,
+    difficulte: document.getElementById('fDiff').value,
+    points: +document.getElementById('fPoints').value,
+    description: document.getElementById('fDesc').value.trim(),
+    reponse_attendue: document.getElementById('fReponse').value.trim(),
+  };
+  if (!body.titre || !body.points) { flash('alertDefis', 'Titre et points sont requis.', 'r'); return; }
+  try {
+    if (editingId) {
+      await api('/api/defis/' + editingId, { method: 'PUT', body: JSON.stringify(body) });
+      flash('alertDefis', 'Défi mis à jour.', 'g');
+    } else {
+      await api('/api/defis', { method: 'POST', body: JSON.stringify(body) });
+      flash('alertDefis', 'Défi créé.', 'g');
+    }
+    closeDefiModal();
+    loadDefis();
+  } catch (e) { flash('alertDefis', 'Erreur : ' + e.message, 'r'); }
+}
+
+async function delDefi(id) {
+  if (!confirm('Supprimer ce défi et toutes ses soumissions ?')) return;
+  try {
+    await api('/api/defis/' + id, { method: 'DELETE' });
+    flash('alertDefis', 'Défi supprimé.', 'g');
+    loadDefis();
+  } catch (e) { flash('alertDefis', 'Erreur : ' + e.message, 'r'); }
+}
+
+// ── UTILISATEURS ──────────────────────────────────────
+async function loadUsers() {
+  try {
+    usersData = await api('/admin/users');
+    document.getElementById('userCount').textContent = usersData.length + ' comptes';
+    renderUsers(usersData);
+  } catch (e) { flash('alertUsers', 'Erreur : ' + e.message, 'r'); }
+}
+
+function renderUsers(data) {
+  const tb = document.getElementById('usersTbody');
+  if (!data.length) { tb.innerHTML = '<tr><td colspan="7"><div class="loading">aucun utilisateur</div></td></tr>'; return; }
+  tb.innerHTML = data.map((u, i) => `
+    <tr>
+      <td class="mono-sm">${i+1}</td>
+      <td style="font-weight:500">${u.nom}</td>
+      <td class="mono-sm">${u.email}</td>
+      <td class="mono-sm" style="color:var(--green);font-weight:600">${u.points}</td>
+      <td>${niveauBadge(u.niveau)}</td>
+      <td class="mono-sm">${u.nb_soumissions}</td>
+      <td><button class="btn btn-red btn-sm" onclick="delUser(${u.id_user},'${u.nom.replace(/'/g,"\\'")}')">suppr.</button></td>
+    </tr>`).join('');
+}
+
+function filterUsers() {
+  const q = document.getElementById('searchUser').value.toLowerCase();
+  renderUsers(usersData.filter(u => u.nom.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
+}
+
+async function delUser(id, nom) {
+  if (!confirm(`Supprimer "${nom}" et toutes ses soumissions ?`)) return;
+  try {
+    await api('/admin/users/' + id, { method: 'DELETE' });
+    flash('alertUsers', 'Utilisateur supprimé.', 'g');
+    loadUsers();
+  } catch (e) { flash('alertUsers', 'Erreur : ' + e.message, 'r'); }
+}
+
+// ── SOUMISSIONS ───────────────────────────────────────
+async function loadSoumissions() {
+  try {
+    const data = await api('/admin/soumissions?limit=50');
+    const tb = document.getElementById('soumTbody');
+    if (!data.length) { tb.innerHTML = '<tr><td colspan="7"><div class="loading">aucune soumission</div></td></tr>'; return; }
+    tb.innerHTML = data.map(s => `
+      <tr>
+        <td class="mono-sm">#${s.id_soumission}</td>
+        <td style="font-weight:500">${s.user_nom}</td>
+        <td style="font-size:12px">${s.defi_titre}</td>
+        <td class="mono-sm">${s.langage||'—'}</td>
+        <td>${resBadge(s.resultat)}</td>
+        <td class="mono-sm" style="color:var(--green)">${s.points_gagnes||0}</td>
+        <td class="mono-sm">${fmtDate(s.date_soumission)}</td>
+      </tr>`).join('');
+  } catch (e) { console.error(e); }
+}
+
+// ── STATS ─────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const [defiStats, top] = await Promise.all([
+      api('/admin/stats/defis'),
+      api('/admin/stats/top-users?limit=20'),
+    ]);
+    renderDiffChart(defiStats);
+    renderTauxChart(defiStats.slice(0, 8));
+    renderRank(top);
+  } catch (e) { console.error(e); }
+}
+
+function renderDiffChart(data) {
+  if (diffInst) diffInst.destroy();
+  const counts = { facile: 0, moyen: 0, difficile: 0 };
+  data.forEach(d => { if (d.difficulte in counts) counts[d.difficulte]++; });
+  diffInst = new Chart(document.getElementById('diffChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['facile', 'moyen', 'difficile'],
+      datasets: [{ data: Object.values(counts), backgroundColor: ['#2d6a4f','#7d5a00','#c1121f'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { color: '#5a5a54', font: { family: 'IBM Plex Mono', size: 11 }, boxWidth: 10, padding: 14 } }
+      }
+    }
+  });
+}
+
+function renderTauxChart(data) {
+  if (tauxInst) tauxInst.destroy();
+  tauxInst = new Chart(document.getElementById('tauxChart'), {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.titre.length > 16 ? d.titre.substring(0,16)+'…' : d.titre),
+      datasets: [{ data: data.map(d => parseFloat(d.taux_reussite)||0), backgroundColor: '#1d4e89', borderRadius: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { max: 100, grid: { color: '#e0ddd5' }, ticks: { color: '#9a9a90', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' } },
+        y: { grid: { display: false }, ticks: { color: '#5a5a54', font: { family: 'IBM Plex Mono', size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderRank(users) {
+  document.getElementById('rankTbody').innerHTML = users.map((u, i) => {
+    const taux = u.nb_soumissions > 0 ? Math.round(u.nb_corrects * 100 / u.nb_soumissions) : 0;
+    return `<tr>
+      <td class="mono-sm">${i+1}</td>
+      <td style="font-weight:500">${u.nom}</td>
+      <td class="mono-sm" style="color:var(--green);font-weight:600">${u.points}</td>
+      <td>${niveauBadge(u.niveau)}</td>
+      <td class="mono-sm">${u.nb_corrects}</td>
+      <td class="mono-sm">${u.nb_soumissions}</td>
+      <td class="mono-sm">${taux}%</td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
